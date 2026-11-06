@@ -1,0 +1,16 @@
+=======================PEP 8=================================================
+
+4 espace pour une condition
+
+80 caractere max par ligne
+
+snake_case  minuscule et _ entre les mots
+
+espace entre les opérateur
+
+
+lancer pycodestyle sur les script avant de les push
+=======================================================
+
+ssh skowro_j@alarma.my-etna.io
+
