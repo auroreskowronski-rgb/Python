@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+
+"""exercice_19"""
+
+__author__ = "skowro_j"
+
+
+class Personnage:
+    """Classe représentant un personnage avec un nom
+    des points de vie, une force et un niveau."""
+
+    def __init__(self, nom: str, points_de_vie: int, force: int):
+        """Définir une classe Personnage avec un nom
+        des points de vie et une force."""
+        self.nom = nom
+        self.points_de_vie = points_de_vie
+        self.force = force
+        self.inventaire = []
+        self.arme = None
+        self.niveau = 1
+
+    def se_presenter(self) -> str:
+        """Ajouter une méthode pour
+        afficher les infos du personnage."""
+        return (
+            f"Je suis {self.nom}, j'ai {self.points_de_vie} "
+            f"points de vie et ma force est de {self.force}."
+        )
+
+    def attaquer(self, autre: "Personnage") -> None:
+        """Créer une méthode attaquer qui réduit la vie de l'adversaire"""
+        autre.points_de_vie -= self.force
+
+    def est_ko(self) -> bool:
+        """Ajouter une méthode pour vérifier si le personnage est KO"""
+        return self.points_de_vie <= 0
+
+    def ajouter_objet(self, objet: "Objet"):
+        """Ajouter une méthode pour ajouter un objet à l’inventaire."""
+        self.inventaire.append(objet)
+
+    def equiper(self, arme: "Arme"):
+        """Ajouter une méthode pour équiper une arme."""
+        self.arme = arme
+        for stat, value in arme.stats.items():
+            if hasattr(self, stat):
+                setattr(self, stat, getattr(self, stat) + value)
+
+    def gagner_niveau(self):
+        """Ajouter une méthode pour faire gagner un niveau au personnage."""
+        self.niveau += 1
+        self.points_de_vie += 10
+        self.force += 10
+
+    def accomplir_quete(self, quete: "Quete"):
+        """Ajouter une méthode pour accomplir une quête."""
+        for objet in quete.recompenses:
+            self.ajouter_objet(objet)
+        self.niveau += quete.difficulte
+
+    def combattre(self, adversaire: "Personnage"):
+        """Ajouter une méthode pour combattre
+        un adversaire jusqu'à ce que l'un soit KO."""
+        if self.est_ko():
+            return
+        elif adversaire.points_de_vie <= self.force:
+            self.attaquer(adversaire)
+        elif self.points_de_vie <= adversaire.force and "potion" in [
+            obj.effet for obj in self.inventaire
+        ]:
+            for obj in self.inventaire:
+                if obj.effet == "potion":
+                    obj.utiliser(self)
+                    break
+        elif isinstance(self, Mage) and self.mana >= 6:
+            self.lancer_sort(adversaire, round(self.mana / 2))
+        elif isinstance(self, Mage) and self.mana > 0:
+            self.lancer_sort(adversaire, self.mana)
+        else:
+            self.attaquer(adversaire)
+
+
+class Guerrier(Personnage):
+    """Classe représentant un guerrier, qui est un type de personnage."""
+
+
+class Mage(Personnage):
+    """Classe représentant un mage
+    qui est un type de personnage avec du mana."""
+
+    def __init__(self, nom: str, points_de_vie: int, force: int, mana: int):
+        """Spécialiser Personnage avec une classe Mage."""
+        self.mana = mana
+        self.nom = nom
+        self.points_de_vie = points_de_vie
+        self.force = force
+        self.inventaire = []
+        self.arme = None
+        self.niveau = 1
+
+    def lancer_sort(self, autre: Personnage, cout: int = 1) -> None:
+        """lancer_sort() réduit les PV d’un ennemi et consomme du mana."""
+        if self.mana >= cout:
+            self.mana -= cout
+            autre.points_de_vie -= cout * 2
+
+    def gagner_niveau(self):
+        """Ajouter une méthode pour faire gagner un niveau au personnage."""
+        self.niveau += 1
+        self.points_de_vie += 5
+        self.mana += 5
+
+
+class Objet:
+    """Classe représentant un objet avec un nom
+    un effet et des statistiques."""
+
+    def __init__(self, nom: str, effet: str, stats: dict[str, int]):
+        """Initialiser un objet avec un nom, un effet et des statistiques."""
+        self.nom = nom
+        self.effet = effet
+        self.stats = stats
+
+    def utiliser(self, personnage: "Personnage"):
+        """Utiliser l'objet sur un personnage si c'est une potion."""
+        if self.effet != "potion":
+            return
+        for stat, value in self.stats.items():
+            if hasattr(personnage, stat):
+                setattr(personnage, stat, getattr(personnage, stat) + value)
+        personnage.inventaire.remove(self)
+
+
+class Arme(Objet):
+    """Classe représentant une arme avec un nom et des statistiques."""
+
+    def __init__(self, nom: str, stats: dict[str, int]):
+        """Initialiser une arme avec un nom et des statistiques."""
+        self.nom = nom
+        self.effet = "arme"
+        self.stats = stats
+
+
+class Quete:
+    """Classe représentant une quête avec une description
+    des récompenses et une difficulté."""
+
+    def __init__(
+        self, description: str, recompenses: list["Objet"], difficulte: int
+    ):
+        """Initialiser une quête avec une description
+        des récompenses et une difficulté."""
+        self.description = description
+        self.recompenses = recompenses
+        self.difficulte = difficulte
+
+
+class Monstre(Personnage):
+    """Classe représentant un monstre avec des
+    capacités d'attaque et de résurrection."""
+
+    def attaquer(self, autre: "Personnage") -> None:
+        """Créer une méthode attaquer qui réduit la vie de l'adversaire"""
+        autre.points_de_vie -= self.force * 2
+
+
+class Necromancien(Mage):
+    """Classe représentant un nécromancien avec
+    des capacités de résurrection."""
+
+    def resurection(self, autre: Personnage):
+        """Permet de ressusciter un personnage KO."""
+        if autre.est_ko() and self.mana >= autre.niveau:
+            self.mana -= autre.niveau
+            force = max(1, autre.force - 10)
+            points_de_vie = 2 * autre.niveau
+            nom = autre.nom + " mort-vivant"
+            mort_vivant = Monstre(nom, points_de_vie, force)
+            self.ajouter_objet(mort_vivant)
